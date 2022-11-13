@@ -3,7 +3,9 @@ import time
 import matplotlib.pyplot as plt
 import pandas as pd
 from PIL import Image
-import imageio
+from matplotlib.backends.backend_qt5agg import FigureCanvas
+from matplotlib.figure import Figure
+
 
 asset_tgt = ['000001']
 desti_path = './'
@@ -32,12 +34,13 @@ config['x'] = dict(linewidth=0.5, label='0_hori', color='#000000', secondary_y=F
 
 
 def fig2img(fig):
-    """Convert a Matplotlib figure to a PIL Image and return it"""
-    import io
-    buf = io.BytesIO()
-    fig.savefig(buf)
-    buf.seek(0)
-    img = Image.open(buf)
+    '''
+    matplotlib.figure.Figure转为PIL image
+    '''
+    fig.canvas.draw()
+    w,h = fig.canvas.get_width_height()
+    # 将Image.frombytes替换为Image.frombuffer,图像会倒置
+    img = Image.frombytes('RGB', (w,h), fig.canvas.tostring_rgb())
     return img
 
 
@@ -178,27 +181,35 @@ def pic_out(df, if_mirror):
     return img
 
 
-
-
-
-def plot(d, l):
+def plot(d):
     ax = []  
     ay = [] 
-    plt.ion()  
     plt.ylim(500)
-    for i in range(0, len(d['s100']), shift_num):  
-        for key in d:
-            lst = d[key]
-            ax = [i for i in range(i, i+shift_num)]  
-            ay = lst[i:i+shift_num]  
-            plt.plot(ax, ay, linewidth=config[key]['linewidth'], label=config[key]['label'], color=config[key]['color']) 
-            aax = plt.gca()
-            aax.invert_xaxis()
-        plt.pause(0.001)  
-        # fig = plt.gcf()
-        # l.append(fig2img(fig))
-        plt.ioff()  
-    return l
+    for key in d:
+        lst = d[key]
+        ax = [i for i in range(len(d[key]))]  
+        ay = d[key]  
+        plt.plot(ax, ay, linewidth=config[key]['linewidth'], label=config[key]['label'], color=config[key]['color']) 
+        aax = plt.gca()
+        aax.invert_xaxis()  
+    # fig = plt.gcf()
+    # l.append(fig2img(fig))
+
+    # img_list = []
+    plt.ion()
+    for i in range(0, 8000, 20):
+        
+        if i < 3000:
+            plt.xlim(0, i)
+        else:
+            plt.xlim(i-3000, i)
+        # fig = plt.figure()
+        # img = fig2img(fig)
+        # plt.gcf()
+        plt.pause(0.03)
+    plt.ioff()
+    plt.show()
+    return None
 
 
 headers = ['date', 'tid', 'open', 'high', 'low', 'close', 'volume', 'mid', 'range', 'fac0', 'avg', 's3', 's7', 's14',
@@ -217,8 +228,12 @@ df.sort_values(by='date',axis=0, ascending=True, inplace=True)
 
 d = {i:df[i].tolist() for i in plot_list}
 
-
-l = plot(d, [])
+t1 = time.time()
+plot(d)
+t2 = time.time()
+print(t2-t1)
+# for i, img in enumerate(l[:10]):
+#     Image.Image.save(img, f'out/out{i}.png')
 # print(l)
 
 # img = pic_out(df, False)
