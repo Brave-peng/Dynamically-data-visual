@@ -18,6 +18,7 @@ SHIFT_NUM = 10
 SPEED = 10
 WINDOW_LENGTH = 3000
 TICK_SPACING = 100
+Y_SIZE = 16
 config = {}
 config['close'] = dict(linewidth=0.7, label='close', color='#767676',secondary_y=True)
 config['ma_close'] = dict(linewidth=2, label='ma_close', color='#767676',secondary_y=True)
@@ -70,6 +71,7 @@ class Main(QWidget):
         self.ax = self.figure.subplots()
         self.ax.patch.set_facecolor("gainsboro")
         self.twin_axes = self.ax.twinx().twiny()
+        
         self.index = 0
         graphicscene = QtWidgets.QGraphicsScene()
         graphicscene.addWidget(self.canvas)
@@ -80,8 +82,8 @@ class Main(QWidget):
         timer.timeout.connect(self.on_timeout)
         timer.start(30)
 
-        self.f1 = lambda bottom: bottom*0.9 if bottom > 0 else bottom*1.1
-        self.f2 = lambda top: top*1.1 if top > 0 else top*0.9
+        self.f1 = lambda bottom: bottom*0.95 if bottom > 0 else bottom*1.05
+        self.f2 = lambda top: top*1.4 if top > 0 else top*0.7
 
     def on_timeout(self):
         if self.file is not None and self.play_flag:
@@ -97,7 +99,8 @@ class Main(QWidget):
                 else:
                     top2 = max(top2, max(ay))
                     bottom2 = min(bottom2, min(ay))
-            self.ax.set_ylim(self.f1(bottom1), self.f2(top1))        
+            self.ax.set_ylim(self.f1(bottom1), self.f2(top1))
+            self.ax.set_xticklabels(self.df.index.tolist()[self.index:self.index+WINDOW_LENGTH:TICK_SPACING], rotation=45, fontsize=6)        
             self.twin_axes.set_xlim(self.index, self.index + WINDOW_LENGTH)
             self.twin_axes.set_ylim(self.f1(bottom2), self.f2(top2))
 
@@ -144,7 +147,8 @@ class Main(QWidget):
                     aax.invert_xaxis()  
             self.ax.set_xticklabels(self.df.index.tolist()[::TICK_SPACING], rotation=45, fontsize=6)
             self.ax.xaxis.set_major_locator(ticker.MultipleLocator(TICK_SPACING))
-            
+            self.ax.tick_params(labelsize=Y_SIZE)
+            self.twin_axes.tick_params(labelsize=Y_SIZE)
         self.logger.info("初始化完毕")
 
     def check_border(self):
@@ -175,6 +179,7 @@ class Main(QWidget):
         ax = []  
         ay = [] 
         self.ax.clear()
+        self.ax.patch.set_facecolor("gainsboro")
         for key in self.d:
             ax = [i for i in range(len(self.d[key]))]  
             ay = self.d[key]  
@@ -186,7 +191,6 @@ class Main(QWidget):
                 self.twin_axes.plot(ax, ay, linewidth=config[key]['linewidth'], label=config[key]['label'], color=config[key]['color']) 
                 aax = plt.gca()
                 aax.invert_xaxis() 
-
         self.ax.set_xlim(self.index, self.index + WINDOW_LENGTH)
         top1, bottom1 = -float("inf"), float("inf")
         top2, bottom2 = -float("inf"), float("inf")
@@ -199,12 +203,22 @@ class Main(QWidget):
             else:
                 top2 = max(top2, max(ay))
                 bottom2 = min(bottom2, min(ay))
-        self.ax.set_ylim(self.f1(bottom1), self.f2(top1))        
+        self.ax.set_ylim(self.f1(bottom1), self.f2(top1))
+        self.ax.set_xticklabels(self.df.index.tolist()[self.index:self.index+WINDOW_LENGTH:TICK_SPACING], rotation=45, fontsize=6)        
         self.twin_axes.set_xlim(self.index, self.index + WINDOW_LENGTH)
         self.twin_axes.set_ylim(self.f1(bottom2), self.f2(top2))
-        self.ax.patch.set_facecolor("gainsboro")
+        if not self.reverse_flag:
+            self.index += SHIFT_NUM + self.ui.horizontalSlider.value() * SPEED
+            self.check_border()
+            self.canvas.draw()
+        else:  
+            self.index -= SHIFT_NUM + self.ui.horizontalSlider.value() * SPEED
+            self.check_border()
+            self.canvas.draw()
         self.ax.set_xticklabels(self.df.index.tolist()[::TICK_SPACING], rotation=45, fontsize=6)
         self.ax.xaxis.set_major_locator(ticker.MultipleLocator(TICK_SPACING))
+        self.ax.tick_params(labelsize=Y_SIZE)
+        self.twin_axes.tick_params(labelsize=Y_SIZE)
         self.canvas.draw()
 
     def jump(self):
@@ -217,22 +231,6 @@ class Main(QWidget):
                 break
         if target != -1:
             self.index = target
-            self.d = {i : self.df[i].tolist() for i in plot_list}
-            ax = []  
-            ay = [] 
-            self.ax.clear()
-            for key in self.d:
-                ax = [i for i in range(len(self.d[key]))]  
-                ay = self.d[key]  
-                if key not in ['close', 'ma_close']:
-                    self.ax.plot(ax, ay, linewidth=config[key]['linewidth'], label=config[key]['label'], color=config[key]['color']) 
-                    aax = plt.gca()
-                    aax.invert_xaxis()
-                else:
-                    self.twin_axes.plot(ax, ay, linewidth=config[key]['linewidth'], label=config[key]['label'], color=config[key]['color']) 
-                    aax = plt.gca()
-                    aax.invert_xaxis() 
-
             self.ax.set_xlim(self.index, self.index + WINDOW_LENGTH)
             top1, bottom1 = -float("inf"), float("inf")
             top2, bottom2 = -float("inf"), float("inf")
@@ -245,13 +243,20 @@ class Main(QWidget):
                 else:
                     top2 = max(top2, max(ay))
                     bottom2 = min(bottom2, min(ay))
-            self.ax.set_ylim(self.f1(bottom1), self.f2(top1))        
+            self.ax.set_ylim(self.f1(bottom1), self.f2(top1))
+            self.ax.set_xticklabels(self.df.index.tolist()[self.index:self.index+WINDOW_LENGTH:TICK_SPACING], rotation=45, fontsize=6)        
             self.twin_axes.set_xlim(self.index, self.index + WINDOW_LENGTH)
             self.twin_axes.set_ylim(self.f1(bottom2), self.f2(top2))
-            self.ax.patch.set_facecolor("gainsboro")
-            self.ax.set_xticklabels(self.df.index.tolist()[::TICK_SPACING], rotation=45, fontsize=6)
-            self.ax.xaxis.set_major_locator(ticker.MultipleLocator(TICK_SPACING))
-            self.canvas.draw()
+            if not self.reverse_flag:
+                self.index += SHIFT_NUM + self.ui.horizontalSlider.value() * SPEED
+                self.check_border()
+                self.canvas.draw()
+            else:  
+                self.index -= SHIFT_NUM + self.ui.horizontalSlider.value() * SPEED
+                self.check_border()
+                self.canvas.draw()
+            self.ax.tick_params(labelsize=Y_SIZE)
+            self.twin_axes.tick_params(labelsize=Y_SIZE)            
             self.stop()
         else:
             QMessageBox.information(self, "信息提示", "未找到该日期")
