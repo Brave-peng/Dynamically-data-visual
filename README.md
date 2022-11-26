@@ -2,7 +2,7 @@
 
 #### 使用演示
 
-![](display.gif)
+[![](display.gif)](https://github.com/Brave-peng/Dynamically-data-visual/blob/master/display.gif)
 
 
 
